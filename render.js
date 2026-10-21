@@ -705,21 +705,40 @@ function savingsContributionByAccount(){
   const result = {};
   getAccountsList().forEach(a=>{ if(a.id !== 'savings') result[a.id] = 0; });
   const savTransfers = entries.filter(en=> en.transfer && en.account==='savings').sort((a,b)=> String(a.date||'').localeCompare(String(b.date||'')) || a.id - b.id);
+  
   savTransfers.forEach(en=>{
     if(en.savingsReattribFrom){
       const from = en.savingsReattribFrom, to = en.savingsReattribTo;
-      const amt = Math.min(en.savingsReattribAmount || 0, result[from] || 0);
+      const amt = Math.min(Number(en.savingsReattribAmount) || 0, result[from] || 0);
       if(result.hasOwnProperty(from)) result[from] = round2(result[from] - amt);
       if(result.hasOwnProperty(to)) result[to] = round2((result[to] || 0) + amt);
+      
     } else if(en.savingsWithdrawFrom){
+      let remaining = Number(en.amount) || 0;
       const from = en.savingsWithdrawFrom;
-      const amt = Math.min(en.amount || 0, result[from] || 0);
-      if(result.hasOwnProperty(from)) result[from] = round2(result[from] - amt);
+      
+      if(result.hasOwnProperty(from) && result[from] > 0){
+        const take = Math.min(remaining, result[from]);
+        result[from] = round2(result[from] - take);
+        remaining = round2(remaining - take);
+      }
+      
+      if(remaining > 0){
+        const keys = Object.keys(result).filter(k=> result[k] > 0);
+        const totalPos = round2(keys.reduce((s,k)=> s + result[k], 0));
+        if(totalPos > 0){
+          const take = Math.min(remaining, totalPos);
+          keys.forEach(k=>{ result[k] = round2(result[k] - (result[k] / totalPos) * take); });
+        }
+      }
+      
     } else if(en.type==='income'){
       const pair = findPair(en);
-      if(pair && result.hasOwnProperty(pair.account)){ result[pair.account] += en.amount; }
+      if(pair && result.hasOwnProperty(pair.account)){ 
+        result[pair.account] = round2(result[pair.account] + (Number(en.amount) || 0)); 
+      }
     } else {
-      let remaining = en.amount;
+      let remaining = Number(en.amount) || 0;
       const keys = Object.keys(result).filter(k=> result[k] > 0);
       const totalPos = round2(keys.reduce((s,k)=> s + result[k], 0));
       if(totalPos > 0){
@@ -728,7 +747,8 @@ function savingsContributionByAccount(){
       }
     }
   });
-  Object.keys(result).forEach(k=>{ if(result[k] < 0.01) result[k] = 0; });
+  
+  Object.keys(result).forEach(k=>{ if(isNaN(result[k]) || result[k] < 0.01) result[k] = 0; });
   return result;
 }
 

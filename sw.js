@@ -1,4 +1,4 @@
-const CACHE = 'hisab-khata-v107';
+const CACHE = 'hisab-khata-v108';
 const FILES = [
   './', './index.html', './style.css', './lock.css', './manifest.json',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png',

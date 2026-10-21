@@ -122,15 +122,25 @@ function collectBackupData(){
     entries, notes, plans, loans, dues, settings, lang, recurringTemplates };
 }
 function downloadBackupBlob(dataStr, filename){
+  const fname = filename || ('arcus-backup-' + todayStr() + '.json');
   const blob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename || ('hisab-backup-' + todayStr() + '.json');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>{ URL.revokeObjectURL(url); }, 1000);
+  const file = new File([blob], fname, { type: 'application/json' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({
+      files: [file],
+      title: 'Arcus Backup'
+    }).catch(err => console.log('শেয়ার বাতিল হয়েছে', err));
+  } else {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>{ URL.revokeObjectURL(url); }, 1000);
+  }
 }
 document.getElementById('exportDataBtn').addEventListener('click', ()=>{
   if(!cryptoAvailable()){
