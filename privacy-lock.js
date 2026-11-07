@@ -221,7 +221,7 @@ function buildKeypad(){
   if(!lockKeypadEl) return;
   const keys = ['1','2','3','4','5','6','7','8','9','special','0','back'];
   lockKeypadEl.innerHTML = keys.map(k=>{
-    if(k === 'back')    return '<button type="button" class="pin-key pin-back" data-k="back" aria-label="Backspace">'+LK_IC_BK+'</button>';
+    if(k === 'back')    return '<button type="button" class="pin-key pin-back" data-k="back" aria-label="'+L('a11yBackspace')+'">'+LK_IC_BK+'</button>';
     if(k === 'special') return '<button type="button" class="pin-key pin-special" data-k="" aria-label=""></button>';
     return '<button type="button" class="pin-key" data-k="'+k+'" aria-label="'+k+'">'+k+'</button>';
   }).join('');
@@ -238,7 +238,7 @@ function setSpecialKey(){
   }
   el.innerHTML = html;
   el.dataset.k = k;
-  el.setAttribute('aria-label', k === 'check' ? 'Confirm' : k === 'finger' ? 'Fingerprint' : '');
+  el.setAttribute('aria-label', k === 'check' ? L('a11yConfirm') : k === 'finger' ? L('a11yFingerprint') : '');
   el.classList.toggle('hidden', !k);
 }
 
@@ -251,7 +251,7 @@ function applyCooldownUI(){
     const tick = ()=>{
       if(!lockActive() || !cooldownActive()){
         clearInterval(_cooldownTick); _cooldownTick = null;
-        applyCooldownUI();
+        if(!cooldownActive()) applyCooldownUI();   // অপেক্ষা শেষ → কী চালু করো; লক স্ক্রিন বন্ধ কিন্তু অপেক্ষা চালু থাকলে আর নিজেকে ডেকো না (অসীম রিকার্সন)
         return;
       }
       const s = Math.ceil((lockCooldownUntil - Date.now()) / 1000);
@@ -395,7 +395,7 @@ async function handleUnlockPin(){
     lockCooldownUntil = 0;
     const cb = lockOnSuccess;
     hideLockScreen();
-    if(cb) cb();
+    if(cb) cb(); else nudgeNoSecurityQ();
   } else {
     lockAttemptCount++;
     if(lockAttemptCount >= 5){
@@ -443,6 +443,8 @@ async function handleConfirmPin(){
   const ok4 = ok3 && lkSafeSet(LK_ENABLED, '1');
   if(!ok1 || !ok2 || !ok3 || !ok4){
     lkRestoreKeys(snap);
+    // ইনপুট খালি করা হয় (আগে ভরা থেকে যেত, ডিজিট চাপলে কিছুই হতো না); নিশ্চিতকরণ-মোডে থাকে, তাই একই PIN আবার দিলেই পুনরায় চেষ্টা হয়
+    pinBuf = ''; updateDots(); setSpecialKey();
     setHint(L('storageSaveFailMsg'), true);
     return;
   }
@@ -473,7 +475,7 @@ async function runFingerprintUnlock(){
       lockCooldownUntil = 0;
       const cb = lockOnSuccess;
       hideLockScreen();
-      if(cb) cb();
+      if(cb) cb(); else nudgeNoSecurityQ();
     } else {
       setHint(L('lockErrFingerprint'), true);
       setTimeout(clearHint, 2200);
@@ -694,12 +696,12 @@ document.getElementById('changeLockPwBtn').addEventListener('click', ()=>{
 document.getElementById('changeSecurityQBtn').addEventListener('click', ()=>{
   showLockScreen({ mode: 'verify', cancellable: true, onSuccess: ()=> openSecurityQModal('change') });
 });
-function performDisableLock(){
+function performDisableLock(silent){
   [LK_ENABLED, LK_PIN_HASH, LK_PIN_SALT, LK_PIN_LEN,
    LK_PW_HASH, LK_PW_SALT, LK_SQ, LK_SQ_HASH, LK_SQ_SALT,
    LK_WEBAUTHN, LK_ACTIVITY, LK_ATTEMPTS, LK_COOLDOWN,
    LK_F_ATTEMPTS, LK_F_COOLDOWN, LK_LEVEL].forEach(lkSafeDel);
-  toast(L('lockDisabledToast'));
+  if(silent !== true) toast(L('lockDisabledToast'));
   updateSettingsPrivacyUI();
 }
 document.getElementById('disableLockBtn').addEventListener('click', ()=>{
@@ -723,8 +725,26 @@ function openSecurityQModal(mode){
   setTimeout(()=>{ document.getElementById('securityQSelect').focus(); }, 60);
 }
 function closeSecurityQModal(){
+  const wasSetup = (securityQMode === 'setup');
   securityQModalEl.classList.remove('open'); unlockBodyScroll();
   securityQMode = null;
+  /* এইমাত্র লক চালু হয়েছে অথচ প্রশ্ন সেট না করেই বন্ধ করা হলো → লক বাতিল।
+     নইলে PIN ভুলে গেলে ফেরার কোনো উপায় থাকে না (শুধু আনইনস্টল = ডাটা লস) */
+  let hasSq = false;
+  try{ hasSq = !!localStorage.getItem(LK_SQ); }catch(e){}
+  if(wasSetup && isLockEnabled() && !hasSq){
+    performDisableLock(true);
+    if(typeof toast === 'function') toast(L('lockDisabledNoSqToast'), 7000);
+  }
+}
+/* আগে থেকেই প্রশ্ন ছাড়া লক চালু থাকা ইউজারদের জন্য: আনলকের পর (সেশনে একবার) মনে করিয়ে দেওয়া */
+let lkSqNudged = false;
+function nudgeNoSecurityQ(){
+  try{
+    if(lkSqNudged || !isLockEnabled() || localStorage.getItem(LK_SQ)) return;
+    lkSqNudged = true;
+    setTimeout(()=>{ if(typeof toast === 'function') toast(L('lockNoSqNudgeToast'), 7000); }, 600);
+  }catch(e){}
 }
 document.getElementById('securityQSelect').addEventListener('change', (e)=>{
   document.getElementById('securityQCustomInput').style.display = e.target.value === 'custom' ? 'block' : 'none';

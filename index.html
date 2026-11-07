@@ -12,6 +12,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Arcus</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="settings.css">
+<link rel="stylesheet" href="main-ui.css">
+<link rel="stylesheet" href="dark-theme.css">
+<link rel="stylesheet" href="polish.css">
 <link rel="stylesheet" href="lock.css">
   <style>
 #dashAccGrid .acc-card .lbl{
@@ -233,6 +237,7 @@
             </div>
             <div class="row2">
               <div><label data-i18n="recurringNoteLabel">নাম / বিবরণ</label><input type="text" id="recurringNoteInput" data-i18n-ph="recurringNotePlaceholder" placeholder="যেমন: বাড়ি ভাড়া"></div>
+              <div><label data-i18n="detailLabel">বিস্তারিত (ঐচ্ছিক)</label><input type="text" id="recurringDetailInput" maxlength="120" autocomplete="off"></div>
               <div id="recurringBudgetBox"><label data-i18n="budgetTypeLabel">ব্যয়ের খাত</label><select id="recurringBudgetType"><option value="need" data-i18n="needLabel">প্রয়োজনীয় ব্যয়</option><option value="want" data-i18n="wantLabel">ঐচ্ছিক ব্যয়</option></select></div>
             </div>
             <div class="row2" style="margin-top:10px;">
@@ -406,6 +411,7 @@
         <div><label data-i18n="dateLabel">তারিখ</label><input type="date" id="editDate"></div>
         <div><label data-i18n="noteLabel">বিবরণ</label><input type="text" id="editNote"></div>
       </div>
+      <div id="editDetailRow" style="margin-top:10px;"><label data-i18n="detailLabel">বিস্তারিত (ঐচ্ছিক)</label><input type="text" id="editDetail" maxlength="120" autocomplete="off"><div class="detail-chips" id="editDetailChips"></div></div>
       <div class="edit-meta" id="editMeta"></div>
       <div class="modal-actions">
         <button class="btn outline" id="editCancelBtn" data-i18n="cancelEditBtn">বাতিল করো</button>
@@ -593,6 +599,19 @@
     <div class="modal-card">
       <div class="modal-header"><h3 data-i18n="entryDetailTitle">এন্ট্রির বিস্তারিত</h3><button class="modal-close" id="entryDetailCloseBtn">×</button></div>
       <div id="entryDetailBody"></div>
+      <div id="entryDetailEditBox" style="display:none; margin-top:12px;">
+        <label data-i18n="detailLabel">বিস্তারিত (ঐচ্ছিক)</label>
+        <input type="text" id="entryDetailEditInput" maxlength="120" autocomplete="off">
+        <div class="detail-chips" id="entryDetailEditChips"></div>
+        <button type="button" class="btn" id="entryDetailEditSaveBtn" style="width:100%; margin-top:10px;" data-i18n="detailSaveBtn">বিস্তারিত সেভ করো</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="catDetailModal">
+    <div class="modal-card">
+      <div class="modal-header"><h3 id="catDetailTitle">—</h3><button class="modal-close" id="catDetailCloseBtn">×</button></div>
+      <div id="catDetailBody"></div>
     </div>
   </div>
 
@@ -691,6 +710,7 @@
             <div><label data-i18n="dateLabel">তারিখ</label><input type="date" id="dateInput" required></div>
             <div><label data-i18n="noteLabel">বিবরণ</label><input type="text" id="noteInput" list="noteSuggestions" autocomplete="off"><datalist id="noteSuggestions"></datalist></div>
           </div>
+          <div style="margin-top:10px;"><label data-i18n="detailLabel">বিস্তারিত (ঐচ্ছিক)</label><input type="text" id="detailInput" maxlength="120" autocomplete="off" data-i18n-ph="detailPlaceholder" placeholder="অতিরিক্ত তথ্য বা রেফারেন্স লিখুন"><div class="detail-chips" id="detailChips"></div></div>
           <button type="submit" id="entrySubmitBtn" class="btn" style="margin-top:10px;" data-i18n="addEntryBtn">লেনদেন যুক্ত করুন</button>
         </div>
       </form>
@@ -1011,6 +1031,8 @@
 </div>
 
 
+<script src="i18n-bn.js"></script>
+<script src="i18n-en.js"></script>
 <script src="i18n.js"></script>
 <script src="i18n-lock.js"></script>
 <script src="settings.js"></script>
@@ -1019,6 +1041,9 @@
 <script src="state.js"></script>
 <script src="recurring.js"></script>
 <script src="render.js"></script>
+<script src="render-accounts.js"></script>
+<script src="render-tabs.js"></script>
+<script src="render-summary.js"></script>
 <script src="entries.js"></script>
 <script src="notes-plans.js"></script>
 <script src="loans.js"></script>

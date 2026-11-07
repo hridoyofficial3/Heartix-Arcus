@@ -53,6 +53,7 @@ document.querySelectorAll('.typeBtn').forEach(btn=>{
     body.style.gap = '10px';
     updateAcctAvailableHint();
     updateEntryBtnState();
+    refreshAddDetailChips();   // ধরন বদলালে চিপও সেই ধরনের হয়
   });
 });
 document.getElementById('accountInput').addEventListener('change', ()=>{ updateAcctAvailableHint(); updateEntryBtnState(); });
@@ -74,6 +75,7 @@ document.getElementById('entryForm').addEventListener('submit', (e)=>{
   if(!account){ openAlert(L('entrySelectAccountMsg')); return; }
   const date = document.getElementById('dateInput').value || todayStr();
   const note = document.getElementById('noteInput').value.trim();
+  const detail = clipDetail(document.getElementById('detailInput').value);   // ঐচ্ছিক বিস্তারিত (যেমন "চুক্তি নং ১২" বা "মার্চের বিল")
   const budgetType = curType === 'expense' ? curBW : null;
   if(curType === 'expense' && gtMoney(amount, accountBalance(account))){
     updateEntryBtnState();
@@ -86,21 +88,26 @@ document.getElementById('entryForm').addEventListener('submit', (e)=>{
   const rows = confirmRow(L('confType'), L(curType==='income'?'typeIncome':'typeExpense')) +
     confirmRow(L('confAmount'), moneyFmt(amount)) + confirmRow(L('confAccount'), accLabel(account)) +
     (budgetType ? confirmRow(L('confBudgetType'), L(budgetType+'Label')) : '') +
-    confirmRow(L('confDate'), date) + (note ? confirmRow(L('confNote'), escapeHtml(note)) : '') +
+    confirmRow(L('confDate'), date) + (note ? confirmRow(L('confNote'), escapeHtml(note)) : '') + (detail ? confirmRow(L('confDetail'), escapeHtml(detail)) : '') +
     (savingsAmount > 0 ? confirmRow(L('confSavingsAuto'), moneyFmt(savingsAmount) + ' (' + numFmt(savingsPct) + '%)') : '');
   openConfirm('confAddEntryTitle', rows, ()=>{
+    const tx = txBegin(['hisab_entries']);   // সেভ ফেল করলে মেমরি ও localStorage দুটোই আগের অবস্থায় ফেরে, ফর্ম অক্ষত থাকে
     const mainId = nextId();
-    entries.push({ id: mainId, type: curType, account, amount, date, note, transfer:false, budgetType });
+    const newEntry = { id: mainId, type: curType, account, amount, date, note, transfer:false, budgetType };
+    if(detail) newEntry.detail = detail;
+    entries.push(newEntry);
     if(savingsAmount > 0){
       // T5: autoSavingsOf = আয়ের id — আয় মুছলে/এডিটে সেভিংস সাথে যায়/মিলে যায় (ঐচ্ছিক ফিল্ড)
       const id1 = nextId(), id2 = nextId();
       entries.push({ id:id1, pairId:id1, type:'expense', account, amount:savingsAmount, date, note:L('savingsAutoEntryNote'), transfer:true, budgetType:null, autoSavingsOf: mainId });
       entries.push({ id:id2, pairId:id1, type:'income', account:'savings', amount:savingsAmount, date, note:L('savingsAutoEntryNote'), transfer:true, budgetType:null, autoSavingsOf: mainId });
     }
-    saveEntries();
+    if(!txCommit(tx)) return;
     document.getElementById('amountInput').value = '';
     document.getElementById('accountInput').value = '';
     document.getElementById('noteInput').value = '';
+    document.getElementById('detailInput').value = '';
+    refreshAddDetailChips();
     document.getElementById('dateInput').value = todayStr();
     renderAll();
     updateAcctAvailableHint();
@@ -114,6 +121,47 @@ document.getElementById('entryForm').addEventListener('submit', (e)=>{
    ============================================================ */
 const editModalEl = document.getElementById('editModal');
 let editingId = null;
+/* "বিস্তারিত"-এর পুরনো মান চিপ হিসেবে (একই বিবরণ ও ধরনের এন্ট্রি থেকে, বেশি ব্যবহৃত আগে)।
+   ট্যাপ করে বসালে একই কাজ সবসময় একই নামে লেখা হয়, তাই মাস/বছরের ক্যাটাগরি-ভাগে ঠিকমতো একসাথে মেলে। */
+function collectDetailSuggestions(note, type, limit){
+  const n = String(note || '').trim().toLowerCase();
+  const map = Object.create(null);
+  entries.forEach(en=>{
+    const d = String(en.detail || '').replace(/\s+/g, ' ').trim();
+    if(!d || en.transfer) return;
+    if(type && en.type !== type) return;
+    if(String(en.note || '').trim().toLowerCase() !== n) return;   // ফাঁকা বিবরণে শুধু ফাঁকা-বিবরণের এন্ট্রির বিস্তারিত
+    const key = d.toLowerCase();
+    const rec = map[key] || (map[key] = { text: d, n: 0, last: '' });
+    rec.n++;
+    const ds = String(en.date || '');
+    if(ds >= rec.last){ rec.last = ds; rec.text = d; }   // সর্বশেষ ব্যবহৃত বানান
+  });
+  return Object.values(map).sort((a,b)=> b.n - a.n || b.last.localeCompare(a.last)).slice(0, limit || 6).map(r=>r.text);
+}
+function renderDetailChips(chipsEl, inputEl, note, type){
+  if(!chipsEl || !inputEl) return;
+  const list = collectDetailSuggestions(note, type, 6);
+  chipsEl.textContent = '';
+  const cur = inputEl.value.replace(/\s+/g, ' ').trim().toLowerCase();
+  list.forEach(d=>{
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'detail-chip' + (d.toLowerCase() === cur ? ' on' : '');
+    b.textContent = d;
+    b.addEventListener('click', ()=>{
+      const same = inputEl.value.replace(/\s+/g, ' ').trim().toLowerCase() === d.toLowerCase();
+      inputEl.value = same ? '' : d;
+      renderDetailChips(chipsEl, inputEl, note, type);
+    });
+    chipsEl.appendChild(b);
+  });
+}
+function refreshAddDetailChips(){
+  renderDetailChips(document.getElementById('detailChips'), document.getElementById('detailInput'), document.getElementById('noteInput').value, curType);
+}
+['input','change'].forEach(ev=> document.getElementById('noteInput').addEventListener(ev, refreshAddDetailChips));
+['focus','input'].forEach(ev=> document.getElementById('detailInput').addEventListener(ev, refreshAddDetailChips));
 let editType = 'expense';
 let editBW = 'need';
 document.querySelectorAll('.editTypeBtn').forEach(btn=>{
@@ -123,6 +171,7 @@ document.querySelectorAll('.editTypeBtn').forEach(btn=>{
     document.querySelectorAll('.editTypeBtn').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');
     document.getElementById('editBudgetRow').style.display = editType==='expense' ? 'block' : 'none';
+    refreshEditDetailChips();
   });
 });
 document.querySelectorAll('.editBwBtn').forEach(btn=>{
@@ -133,6 +182,11 @@ document.querySelectorAll('.editBwBtn').forEach(btn=>{
     btn.classList.add('on');
   });
 });
+function refreshEditDetailChips(){
+  renderDetailChips(document.getElementById('editDetailChips'), document.getElementById('editDetail'), document.getElementById('editNote').value, editType);
+}
+['input','change'].forEach(ev=> document.getElementById('editNote').addEventListener(ev, refreshEditDetailChips));
+['focus','input'].forEach(ev=> document.getElementById('editDetail').addEventListener(ev, refreshEditDetailChips));
 function openEditEntry(id){
   const en = entries.find(x=>x.id === id);
   if(!en) return;
@@ -148,6 +202,9 @@ function openEditEntry(id){
   document.getElementById('editAmount').value = formatAmtInput(String(en.amount));
   document.getElementById('editDate').value = en.date;
   document.getElementById('editNote').value = en.note || '';
+  document.getElementById('editDetail').value = en.detail || '';
+  document.getElementById('editDetailRow').style.display = en.transfer ? 'none' : 'block';   // ট্রান্সফারে বিস্তারিত নেই
+  refreshEditDetailChips();
   const accSel = document.getElementById('editAccount');
   // T11 #১১: placeholder (value='') নির্বাচনযোগ্য হবে না; বাকি অপশন আগের মতো সক্রিয়
   accSel.querySelectorAll('option').forEach(o=> o.disabled = (o.value === ''));
@@ -222,6 +279,7 @@ document.getElementById('editSaveBtn').addEventListener('click', ()=>{
     if(pair){ plan.pairId = pair.id; plan.pairPatch = { amount, date, note }; }
   } else {
     plan.patch.type = editType;
+    plan.patch.detail = clipDetail(document.getElementById('editDetail').value) || undefined;   // খালি = মুছে যায় (JSON-এ থাকে না)
     plan.patch.account = document.getElementById('editAccount').value;
     // T11 #১১: অ্যাকাউন্ট খালি (placeholder) থাকলে সেভ নয় — নইলে এন্ট্রির account '' হয়ে যেত
     if(!plan.patch.account){ toast(L('entrySelectAccountMsg')); return; }
@@ -246,8 +304,10 @@ document.getElementById('editSaveBtn').addEventListener('click', ()=>{
     if(sourceEntry && gtMoney(amount, availableBalance(sourceEntry.account, sourceEntry.id))){ toast(L('insufficientBalanceMsg')); return; }
   }
   const commit = ()=>{
+    const tx = txBegin(['hisab_entries']);
     entries = applyEditPlan(entries, en.id, plan);
-    saveEntries(); closeEditModal(); renderAll();
+    if(!txCommit(tx)) return;
+    closeEditModal(); renderAll();
     toast(L('entryUpdatedToast'));
   };
   if(plan.savings === 'remove'){
@@ -303,7 +363,7 @@ function scheduleEntryDeletion(ids){
   const okSave = atomicSaveKeys(['hisab_entries','hisab_recurring'], [saveEntries, saveRecurring]);
   if(!okSave){
     // রোলব্যাক: entries ও recurring history দুটোই আগের অবস্থায় ফিরিয়ে দাও
-    removed.sort((a,b)=> a.index - b.index).forEach(r=>{ entries.splice(r.index, 0, r.item); });
+    reinsertRemovedEntries(removed);
     restoreRecurringHistory(recHistoryRemoved, false);
     _balanceCache = null;
     renderAll();
@@ -319,7 +379,7 @@ function scheduleEntryDeletion(ids){
     if(settled) return;
     settled = true;
     clearTimeout(finalizeTimer);
-    removed.sort((a,b)=> a.index - b.index).forEach(r=>{ entries.splice(r.index, 0, r.item); });
+    reinsertRemovedEntries(removed);
     restoreRecurringHistory(recHistoryRemoved, false);
     if(!atomicSaveKeys(['hisab_entries','hisab_recurring'], [saveEntries, saveRecurring])){
       // ধাপ ৫/আইটেম ৩: সেভ ফেল করলে মেমরি আবার আগের (মোছা) অবস্থায় ফিরিয়ে দাও, যাতে

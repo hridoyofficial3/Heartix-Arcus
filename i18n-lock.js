@@ -21,7 +21,8 @@
     lockMigrateDesc:"নিরাপত্তার জন্য এখন থেকে ৪–৮ ডিজিটের পিন ব্যবহার হবে। শেষবারের মতো পুরনো পাসওয়ার্ড দিয়ে ঢুকুন — এরপর নতুন পিন সেট করবেন।",
     lockPasswordDesc:"পুরনো পাসওয়ার্ড",
     lockPinSetDone:"পিন সেট হয়েছে",
-    lockSqTitle:"নিরাপত্তা প্রশ্ন"
+    lockSqTitle:"নিরাপত্তা প্রশ্ন",
+    a11yBackspace:"মুছুন", a11yConfirm:"নিশ্চিত করুন", a11yFingerprint:"ফিঙ্গারপ্রিন্ট"
   });
 
   Object.assign(dict.en, {
@@ -39,7 +40,8 @@
     lockMigrateDesc:"For your security, a 4–8 digit PIN is now used. Enter your old password one last time — then you'll set a new PIN.",
     lockPasswordDesc:"Old password",
     lockPinSetDone:"PIN set",
-    lockSqTitle:"Security question"
+    lockSqTitle:"Security question",
+    a11yBackspace:"Backspace", a11yConfirm:"Confirm", a11yFingerprint:"Fingerprint"
   });
 
   /* ---- Defensive: পুরনো i18n.js-এ কী না থাকলে ফলব্যাক ---- */

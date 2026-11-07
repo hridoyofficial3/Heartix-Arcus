@@ -1,0 +1,280 @@
+/* ---------- পেজ ব্যাকগ্রাউন্ড: ছবির বদলে নরম অরোরা গ্র্যাডিয়েন্ট ---------- */
+html:root body{
+  background-color:var(--paper);
+  background-image:
+    radial-gradient(620px 380px at 105% -4%, rgba(20,184,166,.16), transparent 62%),
+    radial-gradient(520px 340px at -12% 14%, rgba(99,102,241,.09), transparent 60%);
+  background-attachment:fixed;
+}
+html[data-theme="dark"] body, html[data-theme="black"] body{
+  background-image:
+    radial-gradient(620px 380px at 105% -4%, rgba(20,184,166,.14), transparent 62%),
+    radial-gradient(520px 340px at -12% 14%, rgba(99,102,241,.10), transparent 60%);
+}
+html[data-theme="black"] body{ background-image:radial-gradient(520px 320px at 105% -4%, rgba(20,184,166,.10), transparent 62%); }
+.wrap{ padding-top:14px; }
+
+/* ---------- হেডার: গ্লাস ---------- */
+html:root header{
+  background:var(--paper) !important;
+  background:color-mix(in srgb, var(--paper) 80%, transparent) !important;
+  -webkit-backdrop-filter:saturate(1.7) blur(18px); backdrop-filter:saturate(1.7) blur(18px);
+  box-shadow:none; border-bottom:1px solid var(--line);
+}
+.header-inner{ padding:12px 16px; }
+header .app-icon{
+  width:40px; height:40px; border-radius:14px !important; border:0;
+  background:linear-gradient(135deg,var(--pr-1),var(--pr-2)) !important;
+  box-shadow:0 8px 16px -6px rgba(var(--acc-rgb-d,15,118,110),.6), inset 0 1px 0 rgba(255,255,255,.35);
+}
+header .app-icon svg, header .app-icon .cloud-check-svg{ color:#fff; }
+header h1{ color:var(--ink); font-size:18px; font-weight:800; letter-spacing:-.1px; }
+header .date{ color:var(--disabled-txt); font-weight:500; }
+html:root .gear-btn{
+  width:40px; height:40px; border-radius:14px !important; color:var(--ink);
+  background:var(--soft-bg); border:1px solid var(--line); transition:transform .12s, background .15s;
+}
+html:root .gear-btn:active{ transform:scale(.92); background:var(--line); }
+
+/* ---------- ট্যাব বার ---------- */
+html:root .tabs{
+  gap:2px; padding:5px; border-radius:22px !important; border:1px solid var(--line);
+  background:var(--card); box-shadow:var(--sh-card); margin-bottom:16px; scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{ display:none; }
+html:root .tab{ border-radius:17px !important; padding:9px 2px 8px; gap:4px; font-size:11px; font-weight:600; color:var(--disabled-txt); }
+html:root .tab .tab-icon{ width:20px; height:20px; transition:transform .2s; }
+html:root .tab.active{
+  color:#fff; background:linear-gradient(135deg,var(--pr-1),var(--pr-2));
+  box-shadow:0 8px 16px -6px rgba(var(--acc-rgb-d,15,118,110),.65), inset 0 1px 0 rgba(255,255,255,.28);
+}
+html:root .tab.active .tab-icon{ transform:translateY(-1px) scale(1.06); }
+.tab-badge{ top:3px; box-shadow:0 0 0 2px var(--card); }
+
+/* ---------- ব্যানার/রিমাইন্ডার কার্ড ---------- */
+.backup-banner, .storage-banner, .recurring-banner, .due-rem-card{
+  border-radius:18px !important; padding:12px 14px; box-shadow:var(--sh-card);
+}
+
+/* ---------- হিরো ব্যালেন্স ---------- */
+html:root .total-bar{
+  position:relative; z-index:1; overflow:hidden; flex-direction:column; align-items:flex-start; gap:4px;
+  padding:22px 22px 24px; border-radius:28px !important; color:#fff; margin-bottom:0;
+  background:
+    radial-gradient(130px 130px at 94% 8%, rgba(255,255,255,.24), rgba(255,255,255,0) 70%),
+    radial-gradient(180px 180px at 4% 130%, rgba(var(--acc-rgb-l,45,212,191),.40), rgba(var(--acc-rgb-l,45,212,191),0) 70%),
+    linear-gradient(135deg,var(--hero-1,#0F766E) 0%,var(--hero-2,#0B5E58) 52%,var(--hero-3,#073B3A) 100%);
+  box-shadow:var(--sh-lift), inset 0 1px 0 rgba(255,255,255,.22);
+}
+.total-bar::after{
+  content:''; position:absolute; right:-40px; bottom:-60px; width:170px; height:170px; border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.14); box-shadow:0 0 0 22px rgba(255,255,255,.04); pointer-events:none;
+}
+.total-bar .lbl{ font-size:12.5px; font-weight:600; opacity:.82; letter-spacing:.3px; }
+.total-bar .val{ font-size:36px; font-weight:800; letter-spacing:-.6px; line-height:1.15; text-shadow:0 2px 12px rgba(0,0,0,.18); }
+html:root .total-bar-sub{
+  margin:-16px 16px 18px; padding:26px 16px 12px; border-radius:0 0 20px 20px;
+  background:var(--card); border:1px solid var(--line); border-top:0; box-shadow:var(--sh-card);
+}
+.total-bar-sub .lbl{ font-size:12px; font-weight:600; }
+.total-bar-sub .val{ font-size:15px; font-weight:800; color:var(--ink); }
+
+/* ---------- অ্যাকাউন্ট কার্ড ---------- */
+.acc-grid{ gap:12px; margin-bottom:16px; }
+html:root .acc-card{
+  position:relative; padding:14px 14px 13px 18px; min-height:92px; border-radius:22px !important;
+  background:var(--card); border-style:solid; border-width:1px 1px 1px 0; border-top-color:var(--line); border-right-color:var(--line); border-bottom-color:var(--line);
+  box-shadow:var(--sh-card); overflow:hidden; transition:transform .15s, box-shadow .15s;
+}
+html:root .acc-card::before{
+  content:''; position:absolute; left:0; top:18px; bottom:18px; width:5px; border-radius:0 5px 5px 0;
+  border-left:5px solid transparent; border-left-color:inherit; box-sizing:border-box;
+}
+html:root .acc-card .lbl{ font-size:12px; font-weight:600; color:var(--disabled-txt); margin-bottom:6px; }
+html:root .acc-card .val{ font-size:21px; font-weight:800; letter-spacing:-.3px; }
+html:root .acc-card .acc-sub{ font-size:10px; }
+.acc-card .acc-ic, .acc-card .lbl > span[style*="width:38px"]{ box-shadow:inset 0 1px 0 rgba(255,255,255,.4); }
+html:root .acc-card.cmp{ padding:12px 14px 12px 18px; min-height:0; }
+html:root .acc-card.cmp .lbl{ font-size:11.5px; }
+html:root .acc-card.cmp .val{ font-size:19px; }
+
+/* ---------- কার্ড ও শিরোনাম ---------- */
+html:root .card{
+  padding:18px; margin-bottom:16px; border-radius:24px !important;
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--sh-card);
+}
+h2.sec{ display:flex; align-items:center; color:var(--ink); font-size:16px; font-weight:800; letter-spacing:-.1px; margin:0 0 12px; }
+h2.sec::before{
+  content:''; flex-shrink:0; width:4px; height:18px; margin-right:10px; border-radius:3px;
+  background:linear-gradient(180deg,var(--pr-1),var(--pr-2));
+}
+h2.sec.collapsible{ padding:2px 0; margin:0; }
+h2.sec.collapsible > span:first-of-type{ flex:1; }
+html:root .sec.collapsible .chev{
+  width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--soft-bg); color:var(--disabled-txt); font-size:12px; flex-shrink:0;
+  transition:transform .25s, background .2s, color .2s;
+}
+html:root .sec.collapsible.open .chev{ background:rgba(var(--acc-rgb,13,148,136),.14); color:var(--ledger-green); }
+.collapse-body{ margin-top:14px; }
+.settings-desc[data-i18n="entryTypeHeadline"]{ font-size:16px !important; font-weight:800 !important; color:var(--ink) !important; letter-spacing:-.1px; margin-bottom:12px !important; }
+
+/* ---------- ফর্ম ---------- */
+form{ gap:12px; }
+label:not(.switch){ font-size:12.5px; font-weight:600; color:var(--disabled-txt); margin:0 0 6px 2px; letter-spacing:.1px; }
+html:root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), html:root select{
+  min-height:48px; padding:12px 14px; border:1.5px solid var(--line); border-radius:15px !important;
+  background-color:var(--input-bg); font-size:15.5px; transition:border-color .15s, box-shadow .15s;
+}
+html:root input:not([type="checkbox"]):not([type="radio"]):focus, html:root select:focus{
+  outline:none; border-color:var(--pr-1); box-shadow:0 0 0 4px var(--ring);
+}
+html:root select{ padding-right:40px; }
+html:root select:disabled, html:root input:disabled{ opacity:.7; }
+.row2{ gap:10px; }
+
+/* সেগমেন্ট — পিল */
+html:root .seg{
+  gap:4px; padding:4px; border:0; overflow:visible; border-radius:17px !important;
+  background:var(--soft-bg); box-shadow:inset 0 1px 3px rgba(15,23,42,.08);
+}
+html:root .seg button{
+  padding:10px 4px; border-radius:13px; background:transparent; color:var(--disabled-txt);
+  font-size:13.5px; font-weight:700; transition:all .18s ease;
+}
+html:root .seg button.on.income{ background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); color:#fff; box-shadow:0 8px 14px -6px rgba(var(--acc-rgb-d,15,118,110),.6); }
+html:root .seg button.on.expense{ background:linear-gradient(135deg,#F87171,#B91C1C); color:#fff; box-shadow:0 8px 14px -6px rgba(220,38,38,.55); }
+html:root .seg button.on.need{ background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); color:#fff; box-shadow:0 8px 14px -6px rgba(var(--acc-rgb-d,15,118,110),.6); }
+html:root .seg button.on.want{ background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); color:#fff; box-shadow:0 8px 14px -6px rgba(var(--acc-rgb-d,15,118,110),.6); }
+html:root .seg button.on.self{ background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); color:#fff; box-shadow:0 8px 14px -6px rgba(var(--acc-rgb-d,15,118,110),.6); }
+html:root .seg button.on:not(.income):not(.expense):not(.need):not(.want):not(.self){ background:var(--card); color:var(--ledger-green); box-shadow:0 2px 8px rgba(15,23,42,.14); }
+html:root .headline-seg button{ padding:15px 0; font-size:16px; border-radius:14px !important; }
+
+/* বাটন */
+html:root .btn{
+  min-height:50px; padding:13px 16px; border-radius:17px !important; font-size:15.5px; font-weight:800; letter-spacing:.1px;
+  color:#fff; background:linear-gradient(135deg,var(--pr-1),var(--pr-2));
+  box-shadow:0 12px 22px -10px rgba(var(--acc-rgb-d,15,118,110),.7), inset 0 1px 0 rgba(255,255,255,.25);
+  transition:transform .12s, box-shadow .15s, opacity .15s;
+}
+html:root .btn:active{ transform:scale(.975); opacity:1; }
+html:root .btn.gold{ background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); }
+html:root .btn.outline{
+  background:rgba(var(--acc-rgb,13,148,136),.07); color:var(--ledger-green); border:1.5px solid rgba(var(--acc-rgb,13,148,136),.4); box-shadow:none;
+}
+html:root .btn.danger{ background:linear-gradient(135deg,#EF4444,#B91C1C); box-shadow:0 12px 22px -10px rgba(220,38,38,.65), inset 0 1px 0 rgba(255,255,255,.2); }
+html:root .btn.state-insufficient{ background:linear-gradient(135deg,#EF4444,#B91C1C) !important; }
+html:root .btn:disabled{ opacity:.55; box-shadow:none; }
+html[data-theme="dark"] .btn:not(.outline):not(.danger):not(.state-insufficient),
+html[data-theme="black"] .btn:not(.outline):not(.danger):not(.state-insufficient){ background:linear-gradient(135deg,var(--pr-1,#14B8A6),var(--pr-2,#0F766E)); }
+html:root .suggest-btn{ border-radius:15px; }
+
+/* ---------- লেনদেন তালিকা ---------- */
+html:root .entry{
+  padding:14px 14px; gap:10px; margin-bottom:10px; border-radius:20px; position:relative; overflow:hidden;
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--sh-card); transition:transform .12s, background .15s;
+}
+html:root .entry:active{ transform:scale(.985); background:var(--soft-bg); }
+html:root .entry.expense-bg, html:root .entry.income-bg{ border-color:var(--line); }
+html:root .entry.expense-bg{ background:linear-gradient(90deg, rgba(220,38,38,.09), var(--card) 55%); }
+html:root .entry.income-bg{ background:linear-gradient(90deg, rgba(var(--acc-rgb,13,148,136),.10), var(--card) 55%); }
+html[data-theme="dark"] .entry.expense-bg, html[data-theme="black"] .entry.expense-bg{ background:linear-gradient(90deg, rgba(248,113,113,.14), var(--card) 55%); }
+html[data-theme="dark"] .entry.income-bg, html[data-theme="black"] .entry.income-bg{ background:linear-gradient(90deg, rgba(var(--acc-rgb-l,45,212,191),.14), var(--card) 55%); }
+.entry.expense-bg::before, .entry.income-bg::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:4px; }
+.entry.expense-bg::before{ background:var(--ledger-red); }
+.entry.income-bg::before{ background:var(--ledger-green); }
+.entry .left{ flex:1; gap:5px; }
+.entry .tag{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; font-size:12px; color:var(--disabled-txt); }
+.entry .tag .en-note{ order:-1; flex-basis:100%; font-size:15px; font-weight:700; color:var(--ink); line-height:1.35; word-break:break-word; }
+.entry .tag .en-date{ font-weight:500; }
+.entry .tag b{ color:var(--ink); }
+.entry .accbadge, .entry .bwbadge, .plan-item .bwbadge{ margin-right:0; padding:2px 9px; font-size:10.5px; font-weight:700; letter-spacing:.2px; }
+html:root .entry .accbadge{ background:var(--soft-bg); color:var(--ink); }
+.entry .amt{ font-size:16px; font-weight:800; letter-spacing:-.2px; }
+.entry .edit-icon{ width:34px; height:34px; padding:0; border-radius:50%; background:var(--soft-bg); color:var(--ledger-green); display:inline-flex; align-items:center; justify-content:center; }
+.entry .actions{ gap:6px; }
+.empty{ padding:28px 12px; font-size:13.5px; border-radius:18px; background:var(--sub-bg); border:1px dashed var(--line); }
+
+/* ---------- ঋণ / বকেয়া / প্ল্যান কার্ড ---------- */
+html:root .plan-item{
+  padding:15px 16px; margin-bottom:12px; border-radius:22px !important; position:relative; overflow:hidden;
+  background:var(--card); border:1px solid var(--line); box-shadow:var(--sh-card);
+}
+html:root .plan-item.item-due{ background:linear-gradient(135deg, rgba(220,38,38,.09), var(--card) 60%); border-color:rgba(220,38,38,.28); }
+html:root .plan-item.item-settled{ background:linear-gradient(135deg, rgba(var(--acc-rgb,13,148,136),.10), var(--card) 60%); border-color:rgba(var(--acc-rgb,13,148,136),.28); }
+.plan-item .pname{ font-size:15.5px; font-weight:800; margin-bottom:8px; }
+.plan-item .pmeta{ font-size:12.5px; line-height:1.85; }
+.due-tag{ padding:1px 10px; font-size:10.5px; letter-spacing:.2px; }
+.progress-track{ height:11px; border-radius:8px; background:var(--soft-bg); box-shadow:inset 0 1px 2px rgba(15,23,42,.1); }
+.progress-fill{ border-radius:8px; background:linear-gradient(90deg,var(--pr-1),var(--pr-2)); }
+.progress-fill.need{ background:linear-gradient(90deg,#60A5FA,#2563EB); }
+.progress-fill.want{ background:linear-gradient(90deg,#A78BFA,#7C3AED); }
+.progress-label{ color:var(--disabled-txt); font-weight:600; }
+
+/* ---------- নোট ---------- */
+.note-item{ gap:12px; padding:13px 2px; align-items:center; border-bottom:1px solid var(--line); }
+.note-item input[type="checkbox"]{
+  -webkit-appearance:none; appearance:none; width:24px; height:24px; min-height:0; flex-shrink:0; margin:0; padding:0;
+  border:2px solid var(--line); border-radius:50%; background:var(--input-bg); display:grid; place-content:center; transition:all .15s;
+}
+.note-item input[type="checkbox"]::after{
+  content:''; width:11px; height:6px; border-left:2.5px solid #fff; border-bottom:2.5px solid #fff;
+  transform:rotate(-45deg) scale(0); margin-top:-2px; transition:transform .15s;
+}
+.note-item input[type="checkbox"]:checked{ background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); border-color:transparent; }
+.note-item input[type="checkbox"]:checked::after{ transform:rotate(-45deg) scale(1); }
+.note-item .txt{ font-size:15px; font-weight:600; }
+.note-item .price{ padding:2px 10px; border-radius:999px; background:rgba(var(--acc-rgb,13,148,136),.12); color:var(--ledger-green); font-weight:700; }
+
+/* ---------- রিপোর্ট (মাস শেষে) ---------- */
+.month-select{ gap:12px; }
+html:root .month-select button{ width:42px; height:42px; border-radius:50% !important; background:var(--card); border:1px solid var(--line); box-shadow:var(--sh-card); color:var(--ledger-green); }
+.month-select .m{ font-size:17px; font-weight:800; }
+.catrow{ gap:10px; margin-bottom:10px; font-size:13.5px; }
+.catrow .bar{ height:9px; border-radius:6px; background:var(--soft-bg); }
+.catrow .bar span{ border-radius:6px; background:linear-gradient(90deg,#FB7185,#DC2626); }
+.catrow .v{ font-weight:800; }
+.chart-detail{ border-radius:16px; box-shadow:var(--sh-card); }
+.chart-legend{ font-weight:600; }
+.chart-dot, .pie-dot{ border-radius:50%; }
+.debt-box-row{ padding:12px 6px; border-radius:14px; }
+.debt-box-divider{ background:var(--line); opacity:.7; }
+.budget-block .bt{ font-weight:700; }
+
+/* ---------- FAB / টোস্ট ---------- */
+html:root .fab{
+  width:60px; height:60px; right:18px; bottom:24px;
+  background:linear-gradient(135deg,var(--pr-1),var(--pr-2));
+  box-shadow:0 16px 30px -8px rgba(var(--acc-rgb-d,15,118,110),.75), 0 0 0 6px rgba(20,184,166,.14), inset 0 1px 0 rgba(255,255,255,.35);
+}
+.toast{ border-radius:18px; padding:12px 18px; background:rgba(15,23,42,.92); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); font-weight:600; }
+
+/* ---------- মোডাল (সেটিংস বাদে) ---------- */
+html:root .modal-overlay:not(#settingsModal){ background:rgba(8,15,30,.55); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px); }
+html:root .modal-overlay:not(#settingsModal) .modal-card{
+  padding:10px 20px 28px; border-radius:30px 30px 0 0 !important; box-shadow:0 -18px 50px rgba(2,8,23,.32);
+}
+@media (min-width:680px){ html:root .modal-overlay:not(#settingsModal) .modal-card{ border-radius:30px !important; } }
+.modal-overlay:not(#settingsModal) .modal-card::before{
+  content:''; display:block; width:40px; height:5px; margin:0 auto 14px; border-radius:3px; background:var(--line);
+}
+.modal-overlay:not(#settingsModal) .modal-header{ margin-bottom:16px; }
+.modal-overlay:not(#settingsModal) .modal-header h3{ color:var(--ink); font-size:20px; font-weight:800; letter-spacing:-.2px; }
+.modal-overlay:not(#settingsModal) .modal-close{
+  width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--soft-bg); color:var(--disabled-txt); font-size:20px; line-height:1; padding:0;
+}
+html:root .confirm-box{ border-radius:20px !important; padding:6px 16px; background:var(--card); box-shadow:var(--sh-card); }
+.confirm-row{ padding:11px 0; border-bottom:1px solid var(--line); }
+.confirm-row span:first-child{ color:var(--disabled-txt); font-weight:500; }
+.confirm-row span:last-child{ font-weight:800; }
+.modal-actions{ gap:10px; margin-top:18px; }
+.recurring-item, .recurring-tpl-row{ border-radius:18px !important; padding:14px; box-shadow:var(--sh-card); }
+.recurring-item .ri-pay-btn{ border-radius:13px !important; padding:11px 14px; background:linear-gradient(135deg,var(--pr-1),var(--pr-2)); font-weight:800; }
+
+/* ---------- অ্যাপ লক ---------- */
+#appLockScreen{ background:
+  radial-gradient(520px 340px at 100% 0%, rgba(20,184,166,.20), transparent 60%),
+  radial-gradient(420px 300px at 0% 100%, rgba(99,102,241,.12), transparent 60%), var(--paper); }
+#appLockScreen h2{ color:var(--ink); font-size:20px; font-weight:800; }
+

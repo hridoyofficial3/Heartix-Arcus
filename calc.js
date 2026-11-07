@@ -6,7 +6,7 @@
   modal.innerHTML =
     '<div class="modal-card calc-card">' +
       '<div class="modal-header"><h3 id="calcTitle">Calculator</h3>' +
-      '<button class="modal-close" id="calcCloseBtn" aria-label="Close">×</button></div>' +
+      '<button class="modal-close" id="calcCloseBtn" aria-label="' + L('a11yClose') + '">×</button></div>' +
       '<div class="calc-screen"><div class="calc-expr" id="calcExpr"></div><div class="calc-res" id="calcRes">0</div></div>' +
       '<div class="calc-grid" id="calcGrid"></div>' +
     '</div>';

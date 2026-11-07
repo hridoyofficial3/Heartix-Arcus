@@ -10,22 +10,28 @@ function addNote(){
   const text = input.value.trim();
   if(!text) return;
   const price = parseAmt(priceInput.value) || 0;
+  const tx = txBegin(['hisab_notes']);   // সেভ ফেল করলে মেমরি ও localStorage আগের অবস্থায় ফেরে, লেখা ফর্মে থাকে
   notes.push({ id: nextId(), text, done:false, price });
-  saveNotes(); input.value=''; priceInput.value=''; renderNotes();
+  if(!txCommit(tx)) return;
+  input.value=''; priceInput.value=''; renderNotes();
 }
 function toggleNote(id){
   const n = notes.find(x=>x.id===id);
   if(!n) return;
   if(n.done && !settings.advancedMode){ renderNotes(); return; }
+  const tx = txBegin(['hisab_notes']);
   n.done = !n.done;
-  saveNotes(); renderNotes();
+  if(!txCommit(tx)) return;
+  renderNotes();
 }
 function deleteNote(id){
   const idx = notes.findIndex(x=>x.id===id);
   if(idx === -1) return;
   const item = notes[idx];
+  const tx = txBegin(['hisab_notes']);
   notes.splice(idx,1);
-  saveNotes(); renderNotes();
+  if(!txCommit(tx)) return;
+  renderNotes();
   let settled = false;
   const finalize = ()=>{ if(settled) return; settled = true; };
   const finalizeTimer = setTimeout(finalize, 5000);
@@ -34,8 +40,10 @@ function deleteNote(id){
     settled = true;
     clearTimeout(finalizeTimer);
     const insertAt = Math.min(idx, notes.length);
+    const utx = txBegin(['hisab_notes']);
     notes.splice(insertAt, 0, item);
-    saveNotes(); renderNotes();
+    if(!txCommit(utx)) return;
+    renderNotes();
   };
   showUndoToast(L('noteDeletedToast'), undo, null, finalize, ()=>clearTimeout(finalizeTimer));
 }
@@ -68,8 +76,9 @@ document.getElementById('planForm').addEventListener('submit', (e)=>{
   if(!account){ openAlert(L('entrySelectAccountMsg')); return; }
   const note = document.getElementById('planNote').value.trim();
   const priority = parseInt(document.getElementById('planPriority').value, 10) || 1;
+  const tx = txBegin(['hisab_plans']);
   plans.push({ id: nextId(), item, amount, date, account, note, priority });
-  savePlans();
+  if(!txCommit(tx)) return;
   document.getElementById('planForm').reset();
   renderPlans(); renderNotes();
   toast(L('planAddedToast'));
@@ -79,8 +88,10 @@ function deletePlan(id){
   if(idx === -1) return;
   const item = plans[idx];
   openSimpleConfirm(L('planDeleteConfirm'), ()=>{
+    const tx = txBegin(['hisab_plans']);
     plans.splice(idx, 1);
-    savePlans(); renderPlans(); renderNotes();
+    if(!txCommit(tx)) return;
+    renderPlans(); renderNotes();
     let settled = false;
     const finalize = ()=>{ if(settled) return; settled = true; };
     const timer = setTimeout(finalize, 5000);
@@ -88,8 +99,10 @@ function deletePlan(id){
       if(settled) return;
       settled = true;
       clearTimeout(timer);
+      const utx = txBegin(['hisab_plans']);
       plans.splice(Math.min(idx, plans.length), 0, item);
-      savePlans(); renderPlans(); renderNotes();
+      if(!txCommit(utx)) return;
+      renderPlans(); renderNotes();
     };
     showUndoToast(L('planDeletedToast'), undo, null, finalize, ()=>clearTimeout(timer));
   });

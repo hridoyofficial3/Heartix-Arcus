@@ -52,14 +52,18 @@ async function encryptAndVerifyBackup(dataObj, password){
 const backupPwModalEl = document.getElementById('backupPasswordModal');
 let backupPwMode = null;
 let backupPwOnSubmit = null;
-const BACKUP_PW_MIN_LEN = 4;
-function openBackupPasswordModal(mode, onSubmit){
+let backupPwOnCancel = null;   // ইউজার সাবমিট না করে বন্ধ করলে (ক্রস/বাইরে ট্যাপ/বাতিল) এটা চলে
+const BACKUP_PW_MIN_LEN = 8;   // শুধু নতুন পাসওয়ার্ড দেওয়ার সময় (ইম্পোর্টে পুরনো ছোট পাসওয়ার্ডও চলে)
+function openBackupPasswordModal(mode, onSubmit, onCancel){
   backupPwMode = mode;
   backupPwOnSubmit = onSubmit;
+  backupPwOnCancel = onCancel || null;
   const pwInput = document.getElementById('backupPasswordInput');
   const pwConfirmInput = document.getElementById('backupPasswordConfirmInput');
   pwInput.value = '';
   pwConfirmInput.value = '';
+  const skipBtnEl = document.getElementById('backupPasswordSkipBtn');
+  if(skipBtnEl) skipBtnEl.textContent = L('backupPwSkipBtn');   // অন্য ফিচার (Drive) বদলে দিলে প্রতিবার আসল লেখায় ফেরে
   const errEl = document.getElementById('backupPasswordError');
   errEl.style.display = 'none'; errEl.textContent = '';
   const exportActions = document.getElementById('backupPasswordActionsExport');
@@ -85,15 +89,20 @@ function openBackupPasswordModal(mode, onSubmit){
 function closeBackupPasswordModal(){
   backupPwModalEl.classList.remove('open');
   unlockBodyScroll();
-  backupPwMode = null; backupPwOnSubmit = null;
+  backupPwMode = null; backupPwOnSubmit = null; backupPwOnCancel = null;
+}
+function cancelBackupPasswordModal(){
+  const cb = backupPwOnCancel;
+  closeBackupPasswordModal();
+  if(typeof cb === 'function') cb();
 }
 function showBackupPwError(msg){
   const errEl = document.getElementById('backupPasswordError');
   errEl.textContent = msg; errEl.style.display = 'block';
 }
-document.getElementById('backupPasswordCloseBtn').addEventListener('click', closeBackupPasswordModal);
-document.getElementById('backupPasswordImportCancelBtn').addEventListener('click', closeBackupPasswordModal);
-backupPwModalEl.addEventListener('click', (e)=>{ if(e.target === backupPwModalEl) closeBackupPasswordModal(); });
+document.getElementById('backupPasswordCloseBtn').addEventListener('click', cancelBackupPasswordModal);
+document.getElementById('backupPasswordImportCancelBtn').addEventListener('click', cancelBackupPasswordModal);
+backupPwModalEl.addEventListener('click', (e)=>{ if(e.target === backupPwModalEl) cancelBackupPasswordModal(); });
 document.getElementById('backupPasswordSkipBtn').addEventListener('click', async ()=>{
   const fn = backupPwOnSubmit;
   closeBackupPasswordModal();
@@ -121,17 +130,12 @@ function collectBackupData(){
   return { app:'hisab-khata-backup', version:1, exportedAt:new Date().toISOString(),
     entries, notes, plans, loans, dues, settings, lang, recurringTemplates };
 }
-function downloadBackupBlob(dataStr, filename){
+/* ফাইল সেভ/শেয়ার করে। সফল হলে true; ইউজার শেয়ার-শিট বাতিল করলে false।
+   শেয়ার অন্য কারণে ফেল করলে (যেমন ইউজার-অ্যাকশনের সময় শেষ) সাধারণ ডাউনলোডে ফলব্যাক করে। */
+async function downloadBackupBlob(dataStr, filename){
   const fname = filename || ('arcus-backup-' + todayStr() + '.json');
   const blob = new Blob([dataStr], { type: 'application/json' });
-  const file = new File([blob], fname, { type: 'application/json' });
-
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    navigator.share({
-      files: [file],
-      title: 'Arcus Backup'
-    }).catch(err => console.log('শেয়ার বাতিল হয়েছে', err));
-  } else {
+  const viaAnchor = ()=>{
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -140,24 +144,43 @@ function downloadBackupBlob(dataStr, filename){
     a.click();
     document.body.removeChild(a);
     setTimeout(()=>{ URL.revokeObjectURL(url); }, 1000);
+    return true;
+  };
+  let file = null;
+  try{ file = new File([blob], fname, { type: 'application/json' }); }catch(e){ file = null; }
+  if(file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+    try{
+      await navigator.share({ files: [file], title: 'Arcus Backup' });
+      return true;
+    }catch(err){
+      if(err && err.name === 'AbortError') return false;   // ইউজার নিজে বাতিল করেছে
+      console.warn('share failed, falling back to download', err);
+    }
   }
+  return viaAnchor();
 }
-document.getElementById('exportDataBtn').addEventListener('click', ()=>{
+document.getElementById('exportDataBtn').addEventListener('click', async ()=>{
   if(!cryptoAvailable()){
-    try{ downloadBackupBlob(JSON.stringify(collectBackupData(), null, 2)); markBackupDone(); toast(L('backupExportedToast')); }
-    catch(err){ toast(L('backupExportFailedToast')); }
+    try{
+      const saved = await downloadBackupBlob(JSON.stringify(collectBackupData(), null, 2));
+      if(!saved){ toast(L('backupNotSavedToast')); return; }
+      markBackupDone(); toast(L('backupExportedToast'));
+    }catch(err){ toast(L('backupExportFailedToast')); }
     return;
   }
   openBackupPasswordModal('export', async (password)=>{
     try{
+      let saved, okToast;
       if(password){
         const payload = await encryptAndVerifyBackup(collectBackupData(), password);
-        downloadBackupBlob(JSON.stringify(payload, null, 2));
-        toast(L('backupEncryptedExportedToast'));
+        saved = await downloadBackupBlob(JSON.stringify(payload, null, 2));
+        okToast = 'backupEncryptedExportedToast';
       } else {
-        downloadBackupBlob(JSON.stringify(collectBackupData(), null, 2));
-        toast(L('backupExportedToast'));
+        saved = await downloadBackupBlob(JSON.stringify(collectBackupData(), null, 2));
+        okToast = 'backupExportedToast';
       }
+      if(!saved){ toast(L('backupNotSavedToast')); return; }   // বাতিল হলে "ব্যাকআপ হয়েছে" দেখানো বা তারিখ আপডেট নয়
+      toast(L(okToast));
       markBackupDone();
     }catch(err){ toast(L('backupExportFailedToast')); }
   });
@@ -173,10 +196,11 @@ function isValidImportEntry(e){
   if(!e || typeof e !== 'object') return false;
   if(!isFiniteNum(e.id)) return false;
   if(!isISODateStr(e.date)) return false;
-  if(!isFiniteNum(e.amount)) return false;
+  if(!isFiniteNum(e.amount) || e.amount < 0) return false;   // নেগেটিভ টাকা বাদ (০ বৈধ: ঋণ/সেভিংসের শূন্য-পরিমাণ মুভ আছে)
   if(e.type !== 'income' && e.type !== 'expense') return false;
   if(typeof e.account !== 'string' || !e.account.trim()) return false;
   if(e.note !== undefined && e.note !== null && typeof e.note !== 'string') return false;
+  if(e.detail !== undefined && e.detail !== null && typeof e.detail !== 'string') return false;
   if(e.transfer !== undefined && typeof e.transfer !== 'boolean') return false;
   if(e.budgetType !== undefined && e.budgetType !== null && e.budgetType !== 'need' && e.budgetType !== 'want') return false;
   return true;
@@ -227,6 +251,7 @@ function isValidImportRecurring(r){
   if(!isFiniteNum(r.amount)) return false;
   if(r.type !== 'income' && r.type !== 'expense' && r.type !== 'transfer') return false;
   if(r.interval !== 'monthly' && r.interval !== 'yearly') return false;
+  if(r.detail !== undefined && r.detail !== null && typeof r.detail !== 'string') return false;
   if(typeof r.createdPeriod !== 'string' || !YM_PERIOD_RE.test(r.createdPeriod)) return false;
   // T11: history ঐচ্ছিক — পুরনো ব্যাকআপে (history-চালু হওয়ার আগে তৈরি) এই ফিল্ড না-ও থাকতে পারে;
   // না থাকলেও বাতিল না করে গ্রহণ করা হয়, applyImportedBackup-এর মাইগ্রেশন ধাপ পরে খালি {} বসায়
@@ -297,23 +322,48 @@ function analyzeImport(parsed){
 }
 
 // ইম্পোর্টের ধাপ: (১) কনফার্ম (বাদ পড়ার সংখ্যা + নিরাপত্তা-কপির কথা সহ) → (২) বর্তমান ডেটার নিরাপত্তা-কপি ডাউনলোড → (৩) ওভাররাইট
-function startImportFlow(parsed){
+function startImportFlow(parsed, onApplied){
   const info = analyzeImport(parsed);
   let msg = L('importDataWarn');
   if(info.totalSkipped > 0) msg += '\n' + tfmt('backupImportSkipConfirm', { n: numFmt(info.totalSkipped) });
   msg += '\n' + L('backupImportSafetyNote');
-  openSimpleConfirm(msg, ()=>{ runImportWithSafetyCopy(parsed); });
+  openSimpleConfirm(msg, ()=>{ runImportWithSafetyCopy(parsed, onApplied); });
 }
-function runImportWithSafetyCopy(parsed){
-  try{
-    // কালেক্ট হয় ওভাররাইটের আগের মেমরি-স্টেট থেকে (ইচ্ছাকৃতভাবে এনক্রিপ্ট করা নয়)
-    downloadBackupBlob(JSON.stringify(collectBackupData(), null, 2), 'hisab-before-import-' + todayStr() + '.json');
-  }catch(err){ toast(L('backupSafetyCopyFailedToast')); return; }
-  // ডাউনলোড শুরু হওয়ার জন্য একটু সময় দিয়ে তারপর ওভাররাইট (নইলে রিলোডে ডাউনলোড কাটা পড়তে পারে)
-  setTimeout(()=>{ applyImportedBackup(parsed); }, 500);
+/* নিরাপত্তা-কপির পাসওয়ার্ড জিজ্ঞেস: স্ট্রিং = এনক্রিপ্ট, null = পাসওয়ার্ড ছাড়া, undefined = ইউজার বন্ধ/বাতিল করেছে */
+function askSafetyCopyPassword(){
+  return new Promise(resolve=>{
+    openBackupPasswordModal('export', pw=> resolve(pw), ()=> resolve(undefined));
+    try{
+      document.getElementById('backupPasswordTitle').textContent = L('backupSafetyPwTitle');
+      document.getElementById('backupPasswordDesc').textContent = L('backupSafetyPwDesc');
+      document.getElementById('backupPasswordSkipBtn').textContent = L('backupSafetyPwSkip');
+    }catch(e){}
+  });
+}
+async function runImportWithSafetyCopy(parsed, onApplied){
+  /* বর্তমান ডেটা থাকলে আগে নিরাপত্তা-কপি সেভ করতে হবে। ইউজার পাসওয়ার্ড দিলে কপি এনক্রিপ্টেড হয়,
+     শেয়ার/সেভ বা পাসওয়ার্ড-ধাপ বাতিল করলে ইম্পোর্টও বাতিল।
+     বর্তমান ডেটা ফাঁকা হলে (যেমন নতুন ফোনে Drive থেকে ফেরানো) কপির দরকার নেই। */
+  if(hasAnyData()){
+    let saved = false;
+    try{
+      let pw = null;
+      if(cryptoAvailable()){
+        pw = await askSafetyCopyPassword();
+        if(pw === undefined){ toast(L('backupSafetyCopyFailedToast')); return; }
+      }
+      // কালেক্ট হয় ওভাররাইটের আগের মেমরি-স্টেট থেকে
+      const payload = pw ? await encryptAndVerifyBackup(collectBackupData(), pw) : collectBackupData();
+      saved = await downloadBackupBlob(JSON.stringify(payload, null, 2), 'hisab-before-import-' + todayStr() + '.json');
+    }catch(err){ saved = false; }
+    if(!saved){ toast(L('backupSafetyCopyFailedToast')); return; }
+    // সেভ/শেয়ার শেষ হওয়ার পর একটু সময় দিয়ে ওভাররাইট
+    await new Promise(r=> setTimeout(r, 300));
+  }
+  applyImportedBackup(parsed, onApplied);
 }
 
-function applyImportedBackup(parsed){
+function applyImportedBackup(parsed, onApplied){
   // T11: অ্যাটমিক ইম্পোর্ট — লেখার আগে সব কটা কী-র বর্তমান কাঁচা মান ব্যাকআপ রাখা হয়;
   // মাঝপথে কোনো একটা কী লেখা ফেল করলে (কোটা ফুল ইত্যাদি) সব কটাই আগের মানে ফিরিয়ে
   // দেওয়া হয় এবং মেমরি-স্টেট আবার সেই (পুরনো) localStorage থেকে লোড করা হয়,
@@ -375,6 +425,7 @@ function applyImportedBackup(parsed){
 
     // সব কী সফলভাবে লেখা হয়েছে — এখন নষ্ট-কী সেভ-ব্লক তোলা যায় (নষ্ট কাঁচা কপি আলাদা কী-তে থেকে যায়)
     clearCorruptBlocks();
+    try{ if(typeof onApplied === 'function') onApplied(); }catch(e){}   // ইম্পোর্ট সফল হওয়ার পরেই (রিলোডের আগে)
 
     const totalSkipped = analysis.totalSkipped;
     if(totalSkipped > 0){ toast(tfmt('backupImportedWithSkippedToast', { n: numFmt(totalSkipped) }), 4200); }

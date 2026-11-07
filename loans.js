@@ -76,9 +76,10 @@ document.getElementById('dueForm').addEventListener('submit', (e)=>{
     (reason ? confirmRow(L('dueReasonLabel'), escapeHtml(reason)) : '') + confirmRow(L('confDate'), date) +
     (targetDate ? confirmRow(L('confDueDate'), targetDate) : '');
   openConfirm('confAddDueTitle', rows, ()=>{
+    const tx = txBegin(['hisab_dues']);   // সেভ ফেল করলে মেমরি ও localStorage দুটোই আগের অবস্থায় ফেরে, ফর্ম অক্ষত থাকে
     const dueId = nextId();
     dues.push({ id: dueId, type: dtype, person, amount, originalAmount: amount, paidAmount: 0, reason, date, dueDate: targetDate, settled:false, settledDate:null, settleEntryIds:[] });
-    saveDues();
+    if(!txCommit(tx)) return;
     document.getElementById('dueForm').reset();
     document.getElementById('dueDate').value = todayStr();
     renderAll();
@@ -95,6 +96,7 @@ document.getElementById('selfLoanTakeForm').addEventListener('submit', (e)=>{
   const date = document.getElementById('selfLoanDate').value || todayStr();
   const dueDate = document.getElementById('selfLoanDueDate').value || '';
   const note = document.getElementById('selfLoanNote').value.trim();
+  if(account === 'savings'){ toast(L('selfLoanSameAccountMsg')); return; }
   if(gtMoney(amount, accountBalance('savings'))){ toast(L('insufficientSavingsMsg')); return; }
   const rows = confirmRow(L('confType'), L('loanSelfLabel')) + confirmRow(L('confAmount'), moneyFmt(amount)) +
     confirmRow(L('confTo'), accLabel(account)) + confirmRow(L('confDate'), date) +
@@ -135,6 +137,7 @@ document.getElementById('depositForm').addEventListener('submit', (e)=>{
   if(moved) rows += confirmRow(L('confKeptIn'), accLabel(keepIn));
   rows += confirmRow(L('confDate'), date);
   openConfirm('confDepositTitle', rows, ()=>{
+    const tx = txBegin(['hisab_entries']);   // সেভ ফেল করলে মেমরি ও localStorage দুটোই আগের অবস্থায় ফেরে, ফর্ম অক্ষত থাকে
     const id1 = nextId(), id2 = nextId();
     entries.push({ id:id1, pairId:id1, type:'expense', account:from, amount, date, note:L('savingsDepositNote'), transfer:true, budgetType:null });
     entries.push({ id:id2, pairId:id1, type:'income', account:'savings', amount, date, note:L('savingsDepositNote'), transfer:true, budgetType:null });
@@ -145,7 +148,7 @@ document.getElementById('depositForm').addEventListener('submit', (e)=>{
         note: tfmt('savingsDepositMoveNoteFmt', { from: accLabelText(from), to: accLabelText(keepIn) }), transfer:true, budgetType:null,
         savingsReattribFrom: from, savingsReattribTo: keepIn, savingsReattribAmount: amount, depositReattribOf: id1 });
     }
-    saveEntries();
+    if(!txCommit(tx)) return;
     document.getElementById('depositAmount').value='';
     document.getElementById('depositTo').value='';
     renderAll();
@@ -170,10 +173,11 @@ document.getElementById('withdrawForm').addEventListener('submit', (e)=>{
     confirmRow(L('confTo'), accLabel(to)) + confirmRow(L('confDate'), date) +
     (reason ? confirmRow(L('confNote'), escapeHtml(reason)) : '');
   openConfirm('confWithdrawTitle', rows, ()=>{
+    const tx = txBegin(['hisab_entries']);   // সেভ ফেল করলে মেমরি ও localStorage দুটোই আগের অবস্থায় ফেরে, ফর্ম অক্ষত থাকে
     const id1 = nextId(), id2 = nextId();
     entries.push({ id:id1, pairId:id1, type:'expense', account:'savings', amount, date, note, transfer:true, budgetType:null, savingsWithdrawFrom: from });
     entries.push({ id:id2, pairId:id1, type:'income', account:to, amount, date, note, transfer:true, budgetType:null });
-    saveEntries();
+    if(!txCommit(tx)) return;
     document.getElementById('withdrawAmount').value='';
     document.getElementById('withdrawReason').value='';
     document.getElementById('withdrawFrom').value='';
@@ -201,10 +205,11 @@ document.getElementById('transferSavingsForm').addEventListener('submit', (e)=>{
     confirmRow(L('confTo'), accLabel(to)) + confirmRow(L('confDate'), date) +
     (reason ? confirmRow(L('confNote'), escapeHtml(reason)) : '');
   openConfirm('confTransferSavingsTitle', rows, ()=>{
+    const tx = txBegin(['hisab_entries']);   // সেভ ফেল করলে মেমরি ও localStorage দুটোই আগের অবস্থায় ফেরে, ফর্ম অক্ষত থাকে
     const id1 = nextId();
     entries.push({ id:id1, pairId:id1, type:'expense', account:'savings', amount:0, date, note, transfer:true, budgetType:null,
       savingsReattribFrom: from, savingsReattribTo: to, savingsReattribAmount: amount });
-    saveEntries();
+    if(!txCommit(tx)) return;
     document.getElementById('transferSavingsAmount').value='';
     document.getElementById('transferSavingsReason').value='';
     document.getElementById('transferSavingsFrom').value='';
@@ -228,10 +233,11 @@ document.getElementById('transferForm').addEventListener('submit', (e)=>{
   const rows = confirmRow(L('confAmount'), moneyFmt(amount)) + confirmRow(L('confFrom'), accLabel(from)) +
     confirmRow(L('confTo'), accLabel(to)) + confirmRow(L('confDate'), date) + confirmRow(L('confNote'), escapeHtml(note));
   openConfirm('confTransferTitle', rows, ()=>{
+    const tx = txBegin(['hisab_entries']);   // সেভ ফেল করলে মেমরি ও localStorage দুটোই আগের অবস্থায় ফেরে, ফর্ম অক্ষত থাকে
     const id1 = nextId(), id2 = nextId();
     entries.push({ id:id1, pairId:id1, type:'expense', account:from, amount, date, note, transfer:true, budgetType:null });
     entries.push({ id:id2, pairId:id1, type:'income', account:to, amount, date, note, transfer:true, budgetType:null });
-    saveEntries();
+    if(!txCommit(tx)) return;
     document.getElementById('transferAmount').value='';
     document.getElementById('transferNote').value='';
     document.getElementById('transferFromSel').value='';
@@ -317,6 +323,7 @@ document.getElementById('settleDueContinueBtn').addEventListener('click', ()=>{
   openConfirm('confSettleLoanTitle', rows, ()=>{ applyDuePayment(due, amt, account, date, isFull); });
 });
 function applyDuePayment(due, amt, account, date, isFull){
+  if(!(amt > 0) || gtMoney(amt, due.amount)) return;   // ডিফেন্সিভ: বকেয়ার বেশি টাকা এন্ট্রিতে ঢুকবে না (UI-ও আটকায়)
   let noteText = due.type==='receivable'
     ? (isFull ? tfmt('dueReceivedNoteFmt', { person: due.person }) : tfmt('duePartialReceivedNoteFmt', { person: due.person }))
     : (isFull ? tfmt('duePaidNoteFmt', { person: due.person }) : tfmt('duePartialPaidNoteFmt', { person: due.person }));
@@ -353,7 +360,7 @@ function deleteDue(id){
     // T11: entries ও dues একসাথে অ্যাটমিকভাবে সেভ — একটা ফেল করলে দুটোই localStorage-এ আগের মানে ফেরে
     const okSave = atomicSaveKeys(['hisab_entries','hisab_dues'], [saveEntries, saveDues]);
     if(!okSave){
-      removed.sort((a,b)=>a.index-b.index).forEach(r=>{ entries.splice(Math.min(r.index, entries.length), 0, r.item); });
+      reinsertRemovedEntries(removed);
       dues.push(dueBackup);
       renderAll();
       toast(L('storageSaveFailMsg'));
@@ -367,7 +374,7 @@ function deleteDue(id){
       if(settled) return;
       settled = true;
       clearTimeout(timer);
-      removed.sort((a,b)=>a.index-b.index).forEach(r=>{ entries.splice(Math.min(r.index, entries.length), 0, r.item); });
+      reinsertRemovedEntries(removed);
       dues.push(dueBackup);
       if(!atomicSaveKeys(['hisab_entries','hisab_dues'], [saveEntries, saveDues])){
         // ধাপ ৫/আইটেম ৩: সেভ ফেল করলে মেমরি আবার আগের (মোছা) অবস্থায় ফিরিয়ে দাও (localStorage-এর সাথে মিলিয়ে)
@@ -448,6 +455,7 @@ const entryDetailModalEl = document.getElementById('entryDetailModal');
 function openEntryDetail(id){
   const en = entries.find(x=>x.id===id);
   if(!en) return;
+  setupEntryDetailEditBox(null);
   const body = document.getElementById('entryDetailBody');
   if(en.savingsReattribFrom){
     const rows = confirmRow(L('confAmount'), moneyFmt(en.savingsReattribAmount || 0)) +
@@ -464,11 +472,39 @@ function openEntryDetail(id){
     confirmRow(L('confAmount'), moneyFmt(en.amount)) + confirmRow(L('confAccount'), accLabel(en.account)) +
     (pair ? confirmRow(en.type==='income'?L('confFrom'):L('confTo'), accLabel(pair.account)) : '') +
     ((en.budgetType==='need'||en.budgetType==='want') ? confirmRow(L('confBudgetType'), L(en.budgetType+'Label')) : '') +
-    confirmRow(L('confDate'), escapeHtml(en.date)) + (en.note ? confirmRow(L('confNote'), escapeHtml(en.note)) : '');
+    confirmRow(L('confDate'), escapeHtml(en.date)) + (en.note ? confirmRow(L('confNote'), escapeHtml(en.note)) : '') +
+    (en.detail ? confirmRow(L('confDetail'), escapeHtml(en.detail)) : '');
   body.innerHTML = rows;
+  setupEntryDetailEditBox(en);
   entryDetailModalEl.classList.add('open');
   lockBodyScroll();
 }
+/* শুধু "বিস্তারিত" বদলানো টাকার হিসাবে হাত দেয় না, তাই ১ ঘণ্টা পেরোনো পুরনো এন্ট্রিতেও (সাধারণ মোডেও) চলে।
+   ট্রান্সফার, ঋণ/বকেয়া ও অটো-সেভিংস এন্ট্রিতে বিস্তারিত নেই। */
+let entryDetailEditId = null;
+function setupEntryDetailEditBox(en){
+  const box = document.getElementById('entryDetailEditBox');
+  const ok = !!en && !en.transfer && !isLoanDueEntry(en) && !isAutoSavingsEntry(en) && !en.savingsReattribFrom;
+  box.style.display = ok ? 'block' : 'none';
+  entryDetailEditId = ok ? en.id : null;
+  if(!ok) return;
+  const input = document.getElementById('entryDetailEditInput');
+  input.value = en.detail || '';
+  const refresh = ()=> renderDetailChips(document.getElementById('entryDetailEditChips'), input, en.note, en.type);
+  input.oninput = refresh; input.onfocus = refresh;   // property হ্যান্ডলার: খোলার প্রতিবার আগেরটা বদলে যায়, জমা হয় না
+  refresh();
+}
+document.getElementById('entryDetailEditSaveBtn').addEventListener('click', ()=>{
+  const en = entries.find(x=> x.id === entryDetailEditId);
+  if(!en) return;
+  const d = clipDetail(document.getElementById('entryDetailEditInput').value);
+  const tx = txBegin(['hisab_entries']);
+  if(d) en.detail = d; else delete en.detail;
+  if(!txCommit(tx)) return;      // সেভ ফেল হলে আগের অবস্থায় ফেরে ও জানায়
+  toast(L('detailSavedToast'));
+  closeEntryDetailModal();
+  renderAll();
+});
 function closeEntryDetailModal(){ entryDetailModalEl.classList.remove('open'); unlockBodyScroll(); }
 document.getElementById('entryDetailCloseBtn').addEventListener('click', closeEntryDetailModal);
 entryDetailModalEl.addEventListener('click', (e)=>{ if(e.target === entryDetailModalEl) closeEntryDetailModal(); });
@@ -521,6 +557,7 @@ document.getElementById('settleLoanContinueBtn').addEventListener('click', ()=>{
   openConfirm('confSettleLoanTitle', rows, ()=>{ applyLoanPayment(loan, amt, account, date, isFull); });
 });
 function applyLoanPayment(loan, amt, account, date, isFull){
+  if(!(amt > 0) || gtMoney(amt, loan.amount)) return;   // ডিফেন্সিভ: বকেয়ার বেশি টাকা এন্ট্রিতে ঢুকবে না (UI-ও আটকায়)
   const noteText = isFull
     ? (loan.type==='taken' ? tfmt('loanTakenRepayNoteFmt', { person: loan.person }) : tfmt('loanGivenRepayNoteFmt', { person: loan.person }))
     : (loan.type==='taken' ? tfmt('loanPartialTakenRepayNoteFmt', { person: loan.person }) : tfmt('loanPartialGivenRepayNoteFmt', { person: loan.person }));
@@ -557,7 +594,7 @@ function deleteLoan(id){
     // T11: entries ও loans একসাথে অ্যাটমিকভাবে সেভ — একটা ফেল করলে দুটোই localStorage-এ আগের মানে ফেরে
     const okSave = atomicSaveKeys(['hisab_entries','hisab_loans'], [saveEntries, saveLoans]);
     if(!okSave){
-      removed.sort((a,b)=>a.index-b.index).forEach(r=>{ entries.splice(Math.min(r.index, entries.length), 0, r.item); });
+      reinsertRemovedEntries(removed);
       loans.push(loanBackup);
       renderAll();
       toast(L('storageSaveFailMsg'));
@@ -571,7 +608,7 @@ function deleteLoan(id){
       if(settled) return;
       settled = true;
       clearTimeout(timer);
-      removed.sort((a,b)=>a.index-b.index).forEach(r=>{ entries.splice(Math.min(r.index, entries.length), 0, r.item); });
+      reinsertRemovedEntries(removed);
       loans.push(loanBackup);
       if(!atomicSaveKeys(['hisab_entries','hisab_loans'], [saveEntries, saveLoans])){
         // ধাপ ৫/আইটেম ৩: সেভ ফেল করলে মেমরি আবার আগের (মোছা) অবস্থায় ফিরিয়ে দাও (localStorage-এর সাথে মিলিয়ে)

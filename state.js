@@ -78,6 +78,17 @@ let settings = { savingsTarget: 0, needPct: 50, wantPct: 30, advancedMode: false
 let recurringTemplates = [];
 
 let __idCounter = 0;
+/* মোছা এন্ট্রি ফেরানোর (undo/রোলব্যাক) সময় পুরনো index নয়, id অনুযায়ী ঠিক জায়গায় বসায়।
+   ৫ সেকেন্ডের মধ্যে অন্য এন্ট্রি যোগ/মুছলে পুরনো index ভুল জায়গা দেখাত। removed = [{item, index}] */
+function reinsertRemovedEntries(removed){
+  removed.slice().sort((a,b)=> a.item.id - b.item.id).forEach(r=>{
+    let i = 0;
+    while(i < entries.length && entries[i].id <= r.item.id) i++;
+    entries.splice(i, 0, r.item);
+  });
+}
+/* "বিস্তারিত" সাফ: বাড়তি ফাঁকা এক করে, অক্ষর (কোড-পয়েন্ট) হিসেবে ১২০-তে কাটে — ইমোজি/সারোগেট জোড়া মাঝখানে ভাঙে না */
+function clipDetail(s){ return Array.from(String(s == null ? '' : s).replace(/\s+/g, ' ').trim()).slice(0, 120).join(''); }
 function nextId(){
   const now = Date.now();
   __idCounter = now > __idCounter ? now : __idCounter + 1;
@@ -381,6 +392,7 @@ function txStores(){
     hisab_entries:   { get: ()=>entries,            save: ()=>saveEntries() },
     hisab_loans:     { get: ()=>loans,              save: ()=>saveLoans() },
     hisab_dues:      { get: ()=>dues,               save: ()=>saveDues() },
+    hisab_notes:     { get: ()=>notes,              save: ()=>saveNotes() },
     hisab_plans:     { get: ()=>plans,              save: ()=>savePlans() },
     hisab_recurring: { get: ()=>recurringTemplates, save: ()=>saveRecurring() }
   };

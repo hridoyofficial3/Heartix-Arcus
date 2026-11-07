@@ -151,7 +151,7 @@ function renderRecurringPendingModal(){
       '<button type="button" class="nt-head" aria-expanded="'+(isOpen ? 'true' : 'false')+'"><span class="nt-title">'+escapeHtml(tpl.note)+'</span>'+NT_CHEVRON+'</button>'+
       '<div class="nt-body">'+
       '<div class="ri-top"><span class="ri-note">'+escapeHtml(tpl.note)+'</span><span class="ri-amt">'+moneyFmt(tpl.amount)+'</span></div>'+
-      '<div class="ri-meta">'+recurringTypeLabel(tpl.type)+' · '+formatPeriodLabel(tpl, period)+'</div>'+
+      (tpl.detail ? '<div class="ri-meta">'+escapeHtml(tpl.detail)+'</div>' : '')+'<div class="ri-meta">'+recurringTypeLabel(tpl.type)+' · '+formatPeriodLabel(tpl, period)+'</div>'+
       '<label style="display:block; margin-top:8px;">'+L('recurringPayFromLabel')+'</label>'+
       '<select class="ri-account-sel" style="margin-top:4px;">'+accOpts+'</select>'+
       '<div class="settings-desc ri-acct-hint" style="margin-top:4px; font-weight:600;"></div>'+
@@ -194,11 +194,15 @@ function payRecurring(tpl, period, account){
   if(tpl.type === 'expense'){
     if(gtMoney(tpl.amount, accountBalance(account))){ openAlert(L('recurringInsufficientBalance')); return; }
     const id1 = nextId();
-    entries.push({ id:id1, type:'expense', account, amount:tpl.amount, date, note, transfer:false, budgetType: tpl.budgetType || 'need' });
+    const ne = { id:id1, type:'expense', account, amount:tpl.amount, date, note, transfer:false, budgetType: tpl.budgetType || 'need' };
+    if(tpl.detail) ne.detail = tpl.detail;
+    entries.push(ne);
     entryIds.push(id1);
   } else {
     const id1 = nextId();
-    entries.push({ id:id1, type:'income', account, amount:tpl.amount, date, note, transfer:false, budgetType:null });
+    const ni = { id:id1, type:'income', account, amount:tpl.amount, date, note, transfer:false, budgetType:null };
+    if(tpl.detail) ni.detail = tpl.detail;
+    entries.push(ni);
     entryIds.push(id1);
   }
   tpl.history[period] = { status:'paid', entryIds, amount: tpl.amount, account };
@@ -211,8 +215,10 @@ function payRecurring(tpl, period, account){
 function skipRecurring(tpl, period){
   const confirmKey = { expense:'recurringSkipConfirmExpense', income:'recurringSkipConfirmIncome' };
   openSimpleConfirm(L(confirmKey[tpl.type] || 'recurringSkipConfirmExpense'), ()=>{
+    const tx = txBegin(['hisab_recurring']);
     tpl.history[period] = { status:'skipped' };
-    saveRecurring(); toast(L('recurringSkippedToast'));
+    if(!txCommit(tx)) return;
+    toast(L('recurringSkippedToast'));
     checkRecurringReminder();
     renderRecurringPendingModal();
     renderRecurringTplList();
@@ -227,7 +233,7 @@ function renderRecurringTplList(){
   wrap.innerHTML = recurringTemplates.map(tpl=>{
     const intervalTag = tpl.interval === 'yearly' ? L('recurringYearlyTag') : L('recurringMonthlyTag');
     return '<div class="recurring-tpl-row">'+
-      '<div class="rt-info"><b>'+escapeHtml(tpl.note)+'</b>'+moneyFmt(tpl.amount)+' · '+intervalTag+' · '+recurringTypeLabel(tpl.type)+'</div>'+
+      '<div class="rt-info"><b>'+escapeHtml(tpl.note)+'</b>'+(tpl.detail ? '<small class="rt-detail">'+escapeHtml(tpl.detail)+'</small>' : '')+moneyFmt(tpl.amount)+' · '+intervalTag+' · '+recurringTypeLabel(tpl.type)+'</div>'+
       '<button class="ri-del-btn" data-id="'+Number(tpl.id)+'">'+L('deleteBtn')+'</button>'+
     '</div>';
   }).join('');
@@ -236,8 +242,10 @@ function renderRecurringTplList(){
       const tpl = recurringTemplates.find(t=>String(t.id)===btn.dataset.id);
       if(!tpl) return;
       openSimpleConfirm(L('recurringTplDeleteConfirm'), ()=>{
+        const tx = txBegin(['hisab_recurring']);
         recurringTemplates = recurringTemplates.filter(t=>t.id!==tpl.id);
-        saveRecurring(); toast(L('recurringTplDeletedToast'));
+        if(!txCommit(tx)) return;
+        toast(L('recurringTplDeletedToast'));
         renderRecurringTplList(); checkRecurringReminder();
       });
     });
@@ -252,6 +260,7 @@ document.querySelectorAll('.recTypeBtn').forEach(btn=>{ btn.addEventListener('cl
 function resetRecurringForm(){
   document.getElementById('recurringEditId').value = '';
   document.getElementById('recurringNoteInput').value = '';
+  document.getElementById('recurringDetailInput').value = '';
   document.getElementById('recurringAmountInput').value = '';
   document.getElementById('recurringIntervalInput').value = 'monthly';
   document.getElementById('recurringBudgetType').value = 'need';
@@ -266,20 +275,25 @@ document.getElementById('recurringFormCancelBtn').addEventListener('click', ()=>
 document.getElementById('recurringFormSaveBtn').addEventListener('click', ()=>{
   const note = document.getElementById('recurringNoteInput').value.trim();
   if(!note){ toast(L('recurringNoteRequiredMsg')); return; }
+  const detail = clipDetail(document.getElementById('recurringDetailInput').value);
   const amount = parseAmt(document.getElementById('recurringAmountInput').value);
   if(!amount || amount <= 0){ toast(L('recurringAmountRequiredMsg')); return; }
   const type = document.querySelector('.recTypeBtn.on').dataset.type;
   const interval = document.getElementById('recurringIntervalInput').value;
   const budgetType = type === 'expense' ? document.getElementById('recurringBudgetType').value : null;
   const editId = document.getElementById('recurringEditId').value;
+  const tx = txBegin(['hisab_recurring']);
   if(editId){
     const tpl = recurringTemplates.find(t=>String(t.id)===editId);
-    if(tpl){ Object.assign(tpl, { note, type, amount, interval, budgetType }); delete tpl.account; delete tpl.toAccount; }
+    if(tpl){ Object.assign(tpl, { note, type, amount, interval, budgetType }); delete tpl.account; delete tpl.toAccount; if(detail) tpl.detail = detail; else delete tpl.detail; }
   } else {
     const { y, m } = currentPeriodParts();
-    recurringTemplates.push({ id: nextId(), note, type, amount, budgetType, interval, createdPeriod: periodKey('monthly', y, m), history: {} });
+    const nt = { id: nextId(), note, type, amount, budgetType, interval, createdPeriod: periodKey('monthly', y, m), history: {} };
+    if(detail) nt.detail = detail;
+    recurringTemplates.push(nt);
   }
-  saveRecurring(); toast(L('recurringSavedToast'));
+  if(!txCommit(tx)) return;
+  toast(L('recurringSavedToast'));
   document.getElementById('recurringFormBox').style.display = 'none';
   renderRecurringTplList(); checkRecurringReminder();
 });

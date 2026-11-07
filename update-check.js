@@ -17,7 +17,7 @@ function updEnsureModal(){
   m.id = 'updateModal';
   m.innerHTML =
     '<div class="modal-card">' +
-      '<div class="modal-header"><h3 id="updateTitle"></h3><button class="modal-close" id="updateCloseBtn" aria-label="Close">×</button></div>' +
+      '<div class="modal-header"><h3 id="updateTitle"></h3><button class="modal-close" id="updateCloseBtn" aria-label="' + L('a11yClose') + '">×</button></div>' +
       '<div class="settings-desc" id="updateMsg" style="margin-top:4px;"></div>' +
       '<div class="settings-desc" id="updateNotes" style="margin-top:8px; white-space:pre-wrap;"></div>' +
       '<div class="modal-actions">' +
@@ -32,6 +32,8 @@ function updEnsureModal(){
   m.querySelector('#updateDownloadBtn').addEventListener('click', async ()=>{
     if(!updateInfo) return;
     close();
+    // শুধু GitHub-এর https লিঙ্ক খোলা হবে (API-র উত্তরে অন্য কিছু এলেও নয়)
+    if(!/^https:\/\/github\.com\//.test(String(updateInfo.url || ''))) return;
     try{
       const B = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Browser;
       if(B && B.open) await B.open({ url: updateInfo.url });
