@@ -42,6 +42,20 @@ jobs:
             echo "USE_SEPARATE=0" >> $GITHUB_ENV
           fi
 
+      - name: Decide signing mode
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "RELEASE_SIGN=1" >> $GITHUB_ENV
+            echo "Signing mode: RELEASE key from GitHub Secrets"
+          else
+            echo "RELEASE_SIGN=0" >> $GITHUB_ENV
+            echo "::warning::Release keystore secrets are not set. Falling back to the PUBLIC debug key (anyone can sign a look-alike APK). See SIGNING-SETUP.md"
+          fi
+
       - name: Install dependencies
         run: npm install
 
@@ -150,7 +164,8 @@ jobs:
       - name: Sync
         run: npx cap sync android
 
-      - name: Use fixed signing key
+      - name: Use fixed signing key (debug fallback)
+        if: env.RELEASE_SIGN != '1'
         run: |
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
@@ -174,17 +189,46 @@ jobs:
           PY
           grep -n "signingConfigs" -A8 android/app/build.gradle | head -14
 
-      - name: Build debug APK
+      - name: Build debug APK (fallback)
+        if: env.RELEASE_SIGN != '1'
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: |
+          ./gradlew assembleDebug
+          echo "APK_PATH=android/app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_ENV
+
+      - name: Build release APK (unsigned)
+        if: env.RELEASE_SIGN == '1'
+        working-directory: android
+        run: ./gradlew assembleRelease
+
+      - name: Sign release APK
+        if: env.RELEASE_SIGN == '1'
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS_SECRET: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -e
+          export KEY_PASS="${KEY_PASS_SECRET:-$KS_PASS}"
+          BT=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          UNSIGNED=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          echo "Unsigned: $UNSIGNED"
+          "${BT}zipalign" -p -f 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "${BT}apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS --out android/app/build/outputs/apk/release/app-release-signed.apk "$RUNNER_TEMP/aligned.apk"
+          rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/aligned.apk"
+          echo "APK_PATH=android/app/build/outputs/apk/release/app-release-signed.apk" >> $GITHUB_ENV
 
       - name: Print signing SHA-1 of the built APK
         run: |
           APKSIGNER=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)apksigner
           echo "== APK signing certificate =="
-          $APKSIGNER verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -i "SHA-1" | tee sha.txt
-          echo "== debug.keystore SHA-1 (expected) =="
-          keytool -list -v -keystore ~/.android/debug.keystore -storepass android | grep "SHA1" | tee -a sha.txt
+          $APKSIGNER verify --print-certs "$APK_PATH" | grep -i "SHA-1" | tee sha.txt
+          if [ "$RELEASE_SIGN" != "1" ]; then
+            echo "== debug.keystore SHA-1 (expected) =="
+            keytool -list -v -keystore ~/.android/debug.keystore -storepass android | grep "SHA1" | tee -a sha.txt
+          fi
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat sha.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -193,7 +237,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Arcus-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.APK_PATH }}
 
       - name: Publish Release
         if: github.ref == 'refs/heads/main'
@@ -203,7 +247,7 @@ jobs:
         run: |
           if [ "$USE_SEPARATE" = "1" ]; then export GH_TOKEN="$RELEASES_TOKEN"; else export GH_TOKEN="$DEFAULT_TOKEN"; fi
           TAG="build-${{ github.run_number }}"
-          cp android/app/build/outputs/apk/debug/app-debug.apk Arcus.apk
+          cp "$APK_PATH" Arcus.apk
           gh release delete "$TAG" --repo "$RELEASE_REPO" --cleanup-tag -y || true
           gh release create "$TAG" Arcus.apk \
             --repo "$RELEASE_REPO" \
