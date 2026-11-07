@@ -1,7 +1,7 @@
 /* বিল্ডের সময় www/ এর JS ফাইল এলোমেলো (obfuscate) করে। ব্যর্থ হলে সেই ফাইল আসল অবস্থায় থাকে। */
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const JO = require('javascript-obfuscator');
-const SKIP = new Set(['i18n.js', 'sw.js', 'app-version.js']);   // অনুবাদের টেক্সট/সার্ভিস ওয়ার্কার/বিল্ড নম্বর
+const SKIP = new Set(['i18n.js', 'i18n-bn.js', 'i18n-en.js', 'sw.js', 'app-version.js']);   // অনুবাদের টেক্সট/সার্ভিস ওয়ার্কার/বিল্ড নম্বর
 const dir = 'www';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.js') && !SKIP.has(f));
 let ok = 0, skipped = 0;
